@@ -81,6 +81,7 @@ const getButtons = (scope, optionList) => {
 };
 
 const [Table] = useTable({
+  rowKey: "id",
   columns: [
     {
       label: "",

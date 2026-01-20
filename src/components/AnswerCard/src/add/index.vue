@@ -43,7 +43,7 @@
 
 <script setup lang="ts">
 import { ElMessage } from "element-plus";
-import { onBeforeUnmount, ref } from "vue";
+import { inject, onBeforeUnmount, ref } from "vue";
 import AddQuestionLine from "./AddQuestionLine.vue";
 import ArticleSettingView from "../blockes/ArticleSettingView.vue";
 
@@ -98,7 +98,26 @@ const articleSetting = {
   lineHeight: "1mm",
 };
 
+const createEmptyParams = () => ({
+  bigQuestionNumber: "",
+  questionName: "",
+  fixedData: {},
+  articleSetting: {},
+  groups: [
+    {
+      id: Date.now(),
+      questionType: null,
+      startNum: "",
+      endNum: "",
+      score: 0,
+      questionList: [],
+    },
+  ],
+  score: 0,
+});
+
 const open = async (typeItem: any, maxCount: number) => {
+  params.value = createEmptyParams();
   if (lastBigNumber.value && lastBigNumber.value.trim()) {
     const lastIndex = titleNumber.findIndex(it => it === lastBigNumber.value);
     const nextNumber = titleNumber[lastIndex + 1];
@@ -160,11 +179,9 @@ const props = defineProps({
     type: Function,
     default: () => {},
   },
-  needAnswer: {
-    type: Boolean,
-    default: true,
-  },
 });
+
+// const AddSingleQuestionNeedAnswer = inject("AddSingleQuestionNeedAnswer");
 
 const confirmHandler = async () => {
   const data = params.value;
@@ -206,7 +223,7 @@ const confirmHandler = async () => {
           }
         }
       }
-      if (data.fixedData.label === "选择题" && props.needAnswer) {
+      if (data.fixedData.label === "选择题" && true) {
         const ans = question.answer;
         const hasAnswer =
           (typeof ans === "string" && ans !== "") || (Array.isArray(ans) && ans.length > 0);

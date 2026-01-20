@@ -87,6 +87,7 @@ import { showPopConfirm } from "./utils/showPopConfirm.ts";
 import html2canvas from "html2canvas";
 import { base64ToFile, groupAndMergeImages } from "./utils/imageUtils.ts";
 import { createRefManager } from "./utils/refManager.ts";
+import { autoPagination } from "./utils/pagination.ts";
 
 const props = withDefaults(
   defineProps<{
@@ -315,143 +316,9 @@ watch(
   { immediate: true },
 );
 
-const findSafeOffset = (container: HTMLElement, targetPx: number): number => {
-  // 包含 p(段落), span(文字行), img(图片), .item-row(自定义题目行)
-  const elements = container.querySelectorAll("p, span, img, .item-row, .chiose-option");
-  const containerRect = container.getBoundingClientRect();
-
-  let bestOffset = targetPx;
-
-  for (const el of elements as any) {
-    const rect = el.getBoundingClientRect();
-    const relativeTop = rect.top - containerRect.top;
-    const relativeBottom = rect.bottom - containerRect.top;
-
-    // 如果切割线(targetPx)正好落在该元素的中间
-    if (relativeTop < targetPx && relativeBottom > targetPx) {
-      // 如果是图片，或者高度较小的文字行
-      // 我们将切割位置移动到该元素的顶部，确保它完整出现在下一页
-      // 预留 2px 的间隙，避免因渲染引擎导致的边距重叠
-      bestOffset = relativeTop - 2;
-      break;
-    }
-  }
-
-  // 安全保底：如果回退得太离谱（比如导致当前页空了 40% 以上），则放弃避让，强制切断
-  if (bestOffset < targetPx * 0.6) {
-    return targetPx;
-  }
-
-  return bestOffset;
-};
-
-/**
- * 规范化断点比例
- */
-const encodeBreakPoint = (start: number, end: number) => {
-  let s = Number(start.toFixed(4));
-  let e = Number(end.toFixed(4));
-  if (s < 0) s = 0;
-  if (e > 1) e = 1;
-  if (e - s < 0.005) return { start: 0, end: 0, _isTiny: true } as any;
-  if (s <= 0 && e >= 1) return { start: 0, end: 1 };
-  return { start: s, end: e };
-};
-
-const paginateHandler = (info: any, item: any, pageOf: number) => {
-  const headerHeightMap: Record<string, number> = {
-    ArticleQuestion: 80, // 特殊题型保护高度
-  };
-  const MIN_SPLIT_RATIO = 0.15;
-  const MIN_REMAIN_PX = 100;
-
-  const type: string = info.entry.getAttribute("type");
-  const itemIndex = data.value.indexOf(item);
-  if (itemIndex === -1) return;
-
-  const currentPage = Number(pageOf);
-  const elHeight: number = info.elHeight; // 当前 DOM 的总高度
-  const remainPx: number = info.remainPx; // 这一页剩下的像素高度
-
-  let originalHeight = item.props?.originalHeight || elHeight;
-
-  const prevBp = item.props?.breakPoint || { start: 0, end: 1 };
-  const originStart = prevBp.start === 0 && prevBp.end === 0 ? 0 : prevBp.start;
-  const originEnd = prevBp.start === 0 && prevBp.end === 0 ? 1 : prevBp.end;
-
-  let headerPx = headerHeightMap[type] || 0;
-  if (originStart > 0) headerPx = 0; // 已经是后续分段了，不再扣 header
-
-  const safeRemainPx = findSafeOffset(info.entry, remainPx);
-
-  const usableHeight = elHeight - headerPx;
-  const firstPageUsable = Math.max(safeRemainPx - headerPx, 0);
-
-  if (usableHeight <= 0 || firstPageUsable <= 0) return;
-
-  const splitRatio = Math.min(firstPageUsable / usableHeight, 1);
-
-  /* -------- */
-  const shouldMoveWholeItem =
-    originStart === 0 && (splitRatio <= MIN_SPLIT_RATIO || firstPageUsable <= MIN_REMAIN_PX);
-
-  if (shouldMoveWholeItem) {
-    const nextPageIndex = currentPage + 1;
-    item.pageOf = nextPageIndex;
-    item.needCalculate = true;
-    item.props = {
-      ...item.props,
-      originalHeight,
-      breakPoint: { start: 0, end: 1 },
-    };
-
-    for (let i = itemIndex + 1; i < data.value.length; i++) {
-      data.value[i].pageOf = (Number(data.value[i].pageOf) || 0) + 1;
-    }
-    return;
-  }
-  /* -------- */
-
-  const currentSpan = originEnd - originStart;
-  const seg1End = originStart + currentSpan * splitRatio;
-
-  const firstBp = encodeBreakPoint(originStart, seg1End);
-  const secondBp = encodeBreakPoint(seg1End, originEnd);
-
-  //  更新当前页 Item
-  item.needCalculate = true;
-  item.pageOf = currentPage;
-  item.props = {
-    ...item.props,
-    originalHeight,
-    breakPoint: firstBp,
-  };
-
-  // 生成下一页 Item
-  const itemNext: any = JSON.parse(JSON.stringify(toRaw(item)));
-  itemNext.id = `${item.id}_sf_${Date.now()}`;
-  itemNext.needCalculate = false; // 渲染后再由监听触发下一次切割
-  itemNext.pageOf = currentPage + 1;
-  itemNext.isSuffix = true;
-  itemNext.props = {
-    ...itemNext.props,
-    originalHeight,
-    breakPoint: secondBp,
-  };
-
-  data.value.splice(itemIndex, 1, item);
-  data.value.splice(itemIndex + 1, 0, itemNext);
-
-  // 数据并调整后续索引
-  for (let i = itemIndex + 2; i < data.value.length; i++) {
-    data.value[i].pageOf = (Number(data.value[i].pageOf) || 0) + 1;
-  }
-
-  nextTick(() => rebuildHeaders());
-};
-
 let observers: any[] = [];
 const updateItemInfo = (item: any, index: number, pageIndex: number) => {
+  if (item.needCalculate === false) return;
   nextTick(async () => {
     const component = itemRefsManager.getRef(pageIndex, index);
     const page = pageRefsManager.getRef(pageIndex);
@@ -462,10 +329,11 @@ const updateItemInfo = (item: any, index: number, pageIndex: number) => {
         content,
         component.$el,
         info => {
-          paginateHandler(info, item, pageIndex);
+          autoPagination(data, info, item, pageIndex);
+          nextTick(() => rebuildHeaders());
         },
         {
-          offset: 6,
+          offset: 0,
           once: true,
         },
       );
@@ -484,6 +352,7 @@ const reflowPages = () => {
         delete it.props.breakPoint;
       }
       it.isSuffix = false;
+      it.needCalculate = true;
     }
   });
 
@@ -506,7 +375,8 @@ const reflowPages = () => {
             const itemOf = Number(info.entry.getAttribute("itemof"));
             const item = groups.value[pageOf]?.[itemOf];
             if (!item) return;
-            paginateHandler(info, item, pageOf);
+            autoPagination(data, info, item, pageOf);
+            nextTick(() => rebuildHeaders());
           },
           {
             offset: 6,
@@ -612,7 +482,7 @@ const getAllFilterData = () => {
 };
 
 const getViewInfo = () => {
-  if (pageRefsManager.refs.value.length > 0)
+  if (pageRefsManager.refs.value.length > 0 && pageRefsManager.refs.value[0])
     return pageRefsManager.refs.value[0].getBoundingClientRect();
 };
 

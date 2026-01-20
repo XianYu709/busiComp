@@ -4,6 +4,7 @@
     ref="rootRef"
     class="inline-richtext"
     @click="handleClick"
+    style="word-wrap: break-word; word-break: break-all"
     :class="{ 'is-editing': isEditing }">
     <p
       v-if="!isEditing"
@@ -257,7 +258,7 @@ const editorInit = {
   // 优化渲染性能
   object_resizing: false,
   // valid_elements: '*[*]', // 简洁：允许所有属性（根据安全要求可改成更细粒度）
-  // extended_valid_elements: 'span[class|contenteditable|data-.*]',
+  extended_valid_elements: "span[class|style|contenteditable|data-*|id]",
   resize: false,
   // 防止布局偏移的关键配置
   toolbar_mode: "sliding",

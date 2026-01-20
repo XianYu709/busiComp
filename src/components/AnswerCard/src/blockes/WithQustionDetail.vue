@@ -36,13 +36,12 @@ import {
   nextTick,
   ref,
   useAttrs,
-  watch,
   type CSSProperties,
 } from "vue";
 import Block from "../base/Block.vue";
 import { parseOptions } from "@sjjb/utils";
 import { ElButton } from "element-plus";
-import { getPosition, getPositionWithCache } from "../utils/getPosition";
+import { getPositionWithCache } from "../utils/getPosition";
 
 const props = defineProps({
   isFirst: Boolean,
@@ -136,7 +135,7 @@ const ChioseOptionsBox = defineComponent({
                 key={idx}
                 class='flex items-start font-normal text-14px color-#333333'
                 style={{ width: quesionOptionLength.value }}>
-                <span class='mt-4px'>{isTiantu.value ? `[${opt.key}]` : opt.key}</span>
+                <span class='mt-4px'>{isTiantu.value ? `[ ${opt.key} ]` : opt.key}</span>
                 <span class='mt-3px ml-3px'>、</span>
                 <Block class='flex-1' v-model={opt.text} border={false} />
               </div>
@@ -186,6 +185,7 @@ const QuestionItem = defineComponent({
         data-pid={props.parentId}
         ref={questionBoxRef}>
         <p class='pt-5px mr-0px text-14px'>
+          {/* {outAttrs.pageOf}-- */}
           {props[sortFiledKey.value] ? `${props[sortFiledKey.value]}.` : ""}
         </p>
         <div class='flex-1'>
@@ -197,7 +197,7 @@ const QuestionItem = defineComponent({
             editViewMerge={false}
             onMount-done={blockMountend}
           />
-          {props.answerType == 1 && props.resQuestionContentVo.questOption && (
+          {[1, 2, 3, 6].includes(props.answerType) && props.resQuestionContentVo.questOption && (
             <ChioseOptionsBox questOption={JSON.parse(props.resQuestionContentVo.questOption)} />
           )}
           {props.children?.length > 0 && (
@@ -214,6 +214,11 @@ const QuestionItem = defineComponent({
 });
 
 const transformQuestion = (item: any): any => {
+  const getOptionKeys = (it: any) => {
+    if (![1, 2, 3].includes(it.answerType)) return null;
+    const raw = JSON.parse(it?.resQuestionContentVo?.questOption || "[]");
+    return raw.map(it => it.key);
+  };
   return {
     id: item.id,
     questionId: item.id,
@@ -225,6 +230,7 @@ const transformQuestion = (item: any): any => {
     answer: item.resQuestionContentVo?.questAnswer ?? null,
     questionTypeName: item.questionTypeName,
     questionType: item.questionType,
+    contentList: getOptionKeys(item),
     childs: Array.isArray(item.children)
       ? item.children.map((child: any) => transformQuestion(child))
       : [],

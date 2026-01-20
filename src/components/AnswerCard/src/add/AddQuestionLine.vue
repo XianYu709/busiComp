@@ -20,7 +20,7 @@
           style="width: 70px"
           v-model="it.startNum"
           @change="createChildQustion(it)"
-          :disabled="!it.questionTypeId"
+          :disabled="i !== 0 || !it.questionTypeId"
           :min="it.startNum" />
         题
 
@@ -48,8 +48,8 @@
       </div>
 
       <div class="flex items-center w-60px justify-between text-20px cursor-pointer">
-        <!-- <el-icon class="hover:text-primary" @click="addHandler"><Plus /></el-icon>
-        <el-icon class="hover:text-primary" @click="minusHandler(i)"><Minus /></el-icon> -->
+        <ElIcon class="hover:text-primary" @click="addHandler"><Plus /></ElIcon>
+        <ElIcon class="hover:text-primary" @click="minusHandler(i)"><Minus /></ElIcon>
       </div>
     </div>
     <ElScrollbar height="300px">
@@ -65,6 +65,7 @@ import { SnowflakeIdGenerator } from "@sjjb/utils";
 import { ElMessage } from "element-plus";
 import { computed, ref, watch } from "vue";
 import { createNextOptions } from "./nextOptions";
+import { Minus, Plus } from "@element-plus/icons-vue";
 
 const props = defineProps({
   category: {
@@ -239,7 +240,7 @@ const emits = defineEmits(["add", "minus", "getName"]);
 
 const answerTypeChange = (it: any) => {
   const item = typeOptions.value.find(o => o.value == it.questionTypeId);
-  
+
   emits("getName", item?.label || "");
 
   if (props.category.params.type === "ChoiceQuestion") {
@@ -269,12 +270,15 @@ const RightComp = computed(() => nextOptions[props.category.params.type]?.Right 
 const NextComp = computed(() => nextOptions[props.category.params.type]?.Next ?? null);
 
 const addHandler = () => {
-  const groupLast = groups.value[groups.value.length - 1];
+  const last = groups.value.at(-1);
+
+  const startNum = Number(last?.endNum ?? last?.startNum ?? 0) + 1;
+
   groups.value.push({
     id: SnowflakeIdGenerator.generateId(),
     questionTypeId: null,
-    startNum: (groupLast?.startNum ?? 0) + 1,
-    endNum: "",
+    startNum,
+    endNum: startNum,
     score: 0,
     questionList: [],
   });

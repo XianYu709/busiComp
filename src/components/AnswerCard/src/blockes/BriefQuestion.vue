@@ -1,6 +1,5 @@
 <template>
   <div class="pb-10px" id="fillBlankQuestion" :class="props.breakPoint.start != 0 ? 'mt-10px' : ''">
-    {{ breakPoint }}
     <div class="group relative w-full">
       <div
         v-if="props.breakPoint.start == 0"
@@ -38,7 +37,6 @@
                 getAllOptions[it.__globalIndex].scoreBoxList = v;
               }
             " />
-
           <Block
             :key="it.__globalIndex + rightSetting.lineType"
             :border="false"

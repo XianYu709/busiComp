@@ -1,4 +1,4 @@
-import { defineComponent, computed, watchEffect } from "vue";
+import { defineComponent, computed, watchEffect, inject } from "vue";
 import { ElInput, ElRadioButton, ElRadioGroup } from "element-plus";
 import Judument from "../../../JudumentScore/index.vue";
 
@@ -150,6 +150,7 @@ export function createNextOptions(ctx: Ctx) {
 
         q.answer = current; // 多选保持数组
       };
+      // const AddSingleQuestionNeedAnswer = inject("AddSingleQuestionNeedAnswer");
 
       return () => {
         const opt = answerTypeOptions.value;
@@ -160,8 +161,8 @@ export function createNextOptions(ctx: Ctx) {
         return (
           <div class='flex items-center  justify-end w-full mt-3 mb-5'>
             <div class='flex items-center ml-3'>
-              {q.prefix}.
-              <div class='ml-3 flex items-center'>
+              <span class='mr-3'>{q.prefix}.</span>
+              <div class='flex items-center'>
                 {list.map((item: any) => (
                   <div
                     onClick={() => handleClick(item)}
