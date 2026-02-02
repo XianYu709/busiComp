@@ -1,6 +1,41 @@
 import { defineComponent, computed, watchEffect, inject } from "vue";
-import { ElInput, ElRadioButton, ElRadioGroup } from "element-plus";
+import { ElInput, ElRadioButton, ElRadioGroup, ElSelect } from "element-plus";
 import Judument from "../../../JudumentScore/index.vue";
+
+const ProbType = defineComponent({
+  name: "ProbType",
+  props: {
+    modelValue: {
+      type: Number,
+      default: 1,
+    },
+  },
+  emits: ["update:modelValue"],
+  setup(props, { emit, attrs }) {
+    const options = [
+      { label: "单题", value: 1 },
+      { label: "大小问", value: 2 },
+      { label: "大小题", value: 3 },
+    ];
+    const handleUpdate = (value: number) => {
+      emit("update:modelValue", value);
+    };
+    return () => {
+      return (
+        <ElSelect
+          {...attrs}
+          modelValue={props.modelValue}
+          options={options}
+          onUpdate:modelValue={handleUpdate}
+          style={{
+            marginLeft: "10px",
+            width: "90px",
+          }}
+        />
+      );
+    };
+  },
+});
 
 type TypeOption = { label: string; value: number; answerType: number };
 
@@ -150,7 +185,6 @@ export function createNextOptions(ctx: Ctx) {
 
         q.answer = current; // 多选保持数组
       };
-      // const AddSingleQuestionNeedAnswer = inject("AddSingleQuestionNeedAnswer");
 
       return () => {
         const opt = answerTypeOptions.value;
@@ -161,7 +195,11 @@ export function createNextOptions(ctx: Ctx) {
         return (
           <div class='flex items-center  justify-end w-full mt-3 mb-5'>
             <div class='flex items-center ml-3'>
-              <span class='mr-3'>{q.prefix}.</span>
+              <input
+                style='width:  40px; border: 1px solid transparent;text-align: right; color: #60A5FA'
+                class='mr-3'
+                v-model={q.prefix}
+              />
               <div class='flex items-center'>
                 {list.map((item: any) => (
                   <div
@@ -204,6 +242,7 @@ export function createNextOptions(ctx: Ctx) {
                   }}
                 />
               )}
+              <ProbType v-model={q.isOneProb} disabled={true} />
             </div>
           </div>
         );
@@ -216,7 +255,7 @@ export function createNextOptions(ctx: Ctx) {
     props: { group: { type: Object, required: true } },
     setup(props) {
       const group = props.group as any;
-
+      const thinMode = inject("thinMode");
       const setEveryWidth = (e: any) => {
         ctx.setEveryFieldValue(group.questionList || [], "width", e);
         const blocks = (group.questionList || [])
@@ -227,7 +266,7 @@ export function createNextOptions(ctx: Ctx) {
       };
 
       return () => (
-        <>
+        <div style={{ display: thinMode?.value ? "none" : "block" }} class='flex items-center'>
           长度
           <ElRadioGroup v-model={group.width} class='ml-2' onChange={setEveryWidth}>
             <ElRadioButton value='20%'>1/5</ElRadioButton>
@@ -236,7 +275,7 @@ export function createNextOptions(ctx: Ctx) {
             <ElRadioButton value='50%'>1/2</ElRadioButton>
             <ElRadioButton value='100%'>1行</ElRadioButton>
           </ElRadioGroup>
-        </>
+        </div>
       );
     },
   });
@@ -246,7 +285,7 @@ export function createNextOptions(ctx: Ctx) {
     props: { question: { type: Object, required: true } },
     setup(props) {
       const p = props.question as any;
-
+      const thinMode = inject("thinMode");
       const blockLengthChange = (v: number) => {
         const old = p.block || [];
         const nextLen = Number(v) || 0;
@@ -273,9 +312,16 @@ export function createNextOptions(ctx: Ctx) {
         (p.block || []).forEach((b: any) => (b.score = e));
       };
 
+      const onProbChange = (e: any) => {
+        (p.block || []).forEach((b: any) => (b.isOneProb = 1));
+      };
       return () => (
         <div class='flex items-center  justify-end w-full mt-3 mb-5'>
-          <div class='flex items-center ml-3'>{p.prefix}.</div>
+          <input
+            style='width:  40px; border: 1px solid transparent;text-align: right; color: #60A5FA'
+            class='mr-3'
+            v-model={p.prefix}
+          />
           <div class='flex items-center'>
             <ElInput
               type='number'
@@ -286,23 +332,30 @@ export function createNextOptions(ctx: Ctx) {
               min={1}
               max={5}
             />
-            空， 长度
-            <ElRadioGroup v-model={p.width} class='ml-2' onChange={onWidthChange}>
-              <ElRadioButton value='20%'>1/5</ElRadioButton>
-              <ElRadioButton value='25%'>1/4</ElRadioButton>
-              <ElRadioButton value='33.3%'>1/3</ElRadioButton>
-              <ElRadioButton value='50%'>1/2</ElRadioButton>
-              <ElRadioButton value='100%'>1行</ElRadioButton>
-            </ElRadioGroup>
+            空，
+            {!thinMode?.value && (
+              <div class='flex! items-center h-full'>
+                长度
+                <ElRadioGroup v-model={p.width} class='ml-2' onChange={onWidthChange}>
+                  <ElRadioButton value='20%'>1/5</ElRadioButton>
+                  <ElRadioButton value='25%'>1/4</ElRadioButton>
+                  <ElRadioButton value='33.3%'>1/3</ElRadioButton>
+                  <ElRadioButton value='50%'>1/2</ElRadioButton>
+                  <ElRadioButton value='100%'>1行</ElRadioButton>
+                </ElRadioGroup>
+              </div>
+            )}
+            <span class='ml-2'>每空：</span>
             <ElInput
               type='number'
               style='width: 60px'
-              class='ml-3 mr-2'
+              class='mr-2'
               v-model={p.score}
               onChange={onScoreChange}
               min={0}
             />
             分
+            <ProbType v-model={p.isOneProb} onUpdate:modelValue={onProbChange} />
           </div>
         </div>
       );
@@ -323,10 +376,11 @@ export function createNextOptions(ctx: Ctx) {
           .filter(Boolean);
         ctx.setEveryFieldValue(blocks, "lineCount", e);
       };
+      const thinMode = inject("thinMode");
 
       return () => (
-        <>
-          每题添加长横线：
+        <div style={{ visibility: thinMode?.value ? "hidden" : "visible" }}>
+          每小题添加长横线：
           <ElInput
             type='number'
             style='width: 60px'
@@ -336,7 +390,7 @@ export function createNextOptions(ctx: Ctx) {
             min={0}
           />
           条
-        </>
+        </div>
       );
     },
   });
@@ -373,6 +427,10 @@ export function createNextOptions(ctx: Ctx) {
         (p.block || []).forEach((b: any) => (b.score = v));
       };
 
+      const onProbChange = (v: number) => {
+        (p.block || []).forEach((b: any) => (b.isOneProb = 1));
+      };
+
       const onSplit = () => {
         p.block.push({
           prefix: "",
@@ -391,25 +449,36 @@ export function createNextOptions(ctx: Ctx) {
         }
       };
 
+      const thinMode = inject("thinMode");
+
       return () => (
         <div class='mb-5'>
           <div class='flex items-center  justify-end w-full mt-3 mb-1'>
-            <div class='flex items-center mr-3'>{p.prefix}.</div>
+            <input
+              style='width:  40px; border: 1px solid transparent;text-align: right; color: #60A5FA'
+              class='mr-3'
+              v-model={p.prefix}
+            />
             <div class='flex items-center'>
-              添加长横线：
+              <div
+                class='flex items-center h-full'
+                style={{ display: thinMode?.value ? "none" : "block" }}>
+                每问添加长横线：
+                <ElInput
+                  type='number'
+                  style='width: 60px'
+                  class='ml-1 mr-2'
+                  v-model={p.lineCount}
+                  min={0}
+                  onChange={onLineCountChange}
+                />
+                条
+              </div>
+              <span class='ml-2'>每题：</span>
               <ElInput
                 type='number'
                 style='width: 60px'
-                class='ml-1 mr-2'
-                v-model={p.lineCount}
-                min={0}
-                onChange={onLineCountChange}
-              />
-              条
-              <ElInput
-                type='number'
-                style='width: 60px'
-                class='ml-3 mr-2'
+                class='mr-2'
                 v-model={p.score}
                 onChange={onScoreChange}
                 min={0}
@@ -418,6 +487,7 @@ export function createNextOptions(ctx: Ctx) {
               <a class='ml-3 text-blue cursor-pointer' onClick={onSplit}>
                 拆分小题
               </a>
+              <ProbType v-model={p.isOneProb} onUpdate:modelValue={onProbChange} />
             </div>
           </div>
 
@@ -426,15 +496,19 @@ export function createNextOptions(ctx: Ctx) {
               <div class='flex items-center  justify-end pl-3 mt-2' key={b.id ?? i}>
                 <div class='flex items-center ml-3'>{b.prefix}</div>
                 <div class='flex items-center'>
-                  添加长横线：
-                  <ElInput
-                    type='number'
-                    style='width: 60px'
-                    class='ml-1 mr-2'
-                    v-model={b.lineCount}
-                    min={0}
-                  />
-                  条
+                  <div
+                    class='flex items-center'
+                    style={{ display: thinMode?.value ? "none" : "block" }}>
+                    添加长横线：
+                    <ElInput
+                      type='number'
+                      style='width: 60px'
+                      class='ml-1 mr-2'
+                      v-model={b.lineCount}
+                      min={0}
+                    />
+                    条
+                  </div>
                   <ElInput
                     type='number'
                     style='width: 60px'

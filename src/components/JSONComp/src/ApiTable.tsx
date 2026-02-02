@@ -64,6 +64,7 @@ type props = {
     onBtnClick?: () => void; // 按钮点击事件
     showBtn?: boolean; // 是否显示按钮
   };
+  maxHeight?: number | undefined
 } & Partial<TableProps<any>>;
 
 export type TableExpose = {
@@ -131,6 +132,9 @@ export const Table = defineComponent<props>({
     emptyConfig: {
       type: Object,
     },
+    maxHeight: {
+      type: Number
+    }
   },
   emits: ["update:selectList"],
   setup(props, { expose, attrs, emit }) {
@@ -411,6 +415,7 @@ export const Table = defineComponent<props>({
             class={["w-full", props.isFull ? "flex-1" : ""]}
             {...attrs}
             data={tableData.value}
+            max-height={props.maxHeight ? props.maxHeight : undefined}
             onCurrent-change={selectChange}
             row-style={selectCallback}
             v-slots={{
@@ -423,7 +428,7 @@ export const Table = defineComponent<props>({
               class='mt-4 -mb-2 w-full'
               layout='total, ->, sizes, prev, pager, next'
               total={page.value.total || 0}
-              page-sizes={[4, 5, 6, 7, 8, 10, 10, 20, 30, 40, 50, 100]}
+              page-sizes={[4, 5, 6, 7, 8, 10, 20, 30, 40, 50, 100]}
               {...props.pagination}
               v-model:currentPage={page.value.pageNum}
               v-model:page-size={page.value.pageSize}

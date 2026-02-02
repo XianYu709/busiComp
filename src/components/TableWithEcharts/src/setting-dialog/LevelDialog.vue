@@ -13,7 +13,7 @@
         <div>
             <!-- 设置类型选择 -->
             <el-radio-group
-                v-model="settingType"
+                v-model="type"
                 @change="handleTypeChange"
                 class="setting-type-group"
             >
@@ -49,11 +49,12 @@
                 />
 
                 <!-- 得分率类型内容 -->
-                <template v-if="settingType === 'SCORE_RATE'">
+                <template v-if="type === 'SCORE_RATE'">
                 <el-input-number
-                    v-model="grade.minScoreRate"
+                    v-model.number="grade.minScoreRate"
                     :min="0"
                     :max="100"
+                    :precision="0"
                     suffix="%"
                     class="grade-input"
                 />
@@ -61,9 +62,10 @@
                 <span class="operator" v-if="index === levels.length - 1">≤</span>
                 <span class="operator" v-else><</span>
                 <el-input-number
-                    v-model="grade.maxScoreRate"
+                    v-model.number="grade.maxScoreRate"
                     :min="grade.minScoreRate"
                     :max="100"
+                    :precision="0"
                     suffix="%"
                     class="grade-input"
                 />
@@ -73,9 +75,10 @@
                 <template v-if="isRatioType">
                 <span class="ratio-label">所占比例</span>
                 <el-input-number
-                    v-model="grade.ratio"
+                    v-model.number="grade.ratio"
                     :min="0"
                     :max="100"
+                    :precision="0"
                     suffix="%"
                     class="grade-input"
                 />
@@ -168,16 +171,16 @@ const STORAGE_KEY = 'academicGradeSettings';
 // 状态管理
 const state = reactive({
   dialogVisible: true, // 对话框显示状态
-  settingType: 'SCORE_RATE' as 'SCORE_RATE' | 'GRADE_RATIO' | 'CLASS_RATIO',
+  type: 'SCORE_RATE' as 'SCORE_RATE' | 'GRADE_RATIO' | 'CLASS_RATIO',
   criticalScoreRule: 'HIGH_LEVEL' as 'HIGH_LEVEL' | 'MORE_COUNT',
   levels: [] as GradeItem[],
 });
 
-const { settingType, criticalScoreRule, levels } = toRefs(state);
+const { type, criticalScoreRule, levels } = toRefs(state);
 
 // 判断是否为比例类型设置
 const isRatioType = computed(() => 
-  settingType.value === 'GRADE_RATIO' || settingType.value === 'CLASS_RATIO'
+  type.value === 'GRADE_RATIO' || type.value === 'CLASS_RATIO'
 );
 
 // 生成唯一ID
@@ -187,18 +190,18 @@ const generateId = () => Date.now().toString(36) + Math.random().toString(36).su
 const generateLabel = (length: number) => String.fromCharCode(65 + length);
 
 // 获取默认配置
-const getDefaultConfig = (type: string): {
-  settingType: string;
+const getDefaultConfig = (_type: string): {
+  type: string;
   criticalScoreRule: string;
   levels: GradeItem[];
 } => {
   // 基础等级数量
   const baseCount = 4;
   
-  if (type === 'SCORE_RATE') {
+  if (_type === 'SCORE_RATE') {
     // 按得分率默认配置
     return {
-      settingType: 'SCORE_RATE',
+      type: 'SCORE_RATE',
       criticalScoreRule: 'HIGH_LEVEL',
       levels: Array.from({ length: baseCount }, (_, i) => {
         const labels = ['A', 'B', 'C', 'D', 'E'];
@@ -215,7 +218,7 @@ const getDefaultConfig = (type: string): {
   } else {
     // 按比例默认配置
     return {
-      settingType: type,
+      type: _type,
       criticalScoreRule: 'HIGH_LEVEL',
       levels: Array.from({ length: baseCount }, (_, i) => {
         const labels = ['A', 'B', 'C', 'D', 'E'];
@@ -241,13 +244,13 @@ const loadFromStorage = () => {
     }
   }
   // 无本地数据时返回默认配置
-  return getDefaultConfig(settingType.value);
+  return getDefaultConfig(type.value);
 };
 
 // 保存到本地存储
 const saveToStorage = () => {
   const data = {
-    type: settingType.value,
+    type: type.value,
     criticalScoreRule: criticalScoreRule.value,
     levels: levels.value
   };
@@ -256,7 +259,7 @@ const saveToStorage = () => {
 
 // 切换设置类型
 const handleTypeChange = (newType: string) => {
-  settingType.value = newType as any;
+  type.value = newType as any;
   // 加载对应类型的默认配置
   const defaultConfig = getDefaultConfig(newType);
   levels.value = defaultConfig.levels;
@@ -266,7 +269,7 @@ const handleTypeChange = (newType: string) => {
 // 添加等级
 const addGrade = () => {
   const newLabel = generateLabel(levels.value.length);
-  if (settingType.value === 'SCORE_RATE') {
+  if (type.value === 'SCORE_RATE') {
     // 得分率类型默认值（基于最后一个等级的最小值）
     const lastItem = levels.value[levels.value.length - 1];
     levels.value.push({
@@ -318,7 +321,7 @@ const deleteGrade = (index: number) => {
 // 页面挂载时加载数据
 onMounted(() => {
     const savedData = loadFromStorage();
-    settingType.value = savedData?.type ?? 'SCORE_RATE';
+    type.value = savedData?.type ?? 'SCORE_RATE';
     criticalScoreRule.value = savedData.criticalScoreRule;
     levels.value = savedData.levels;
 });

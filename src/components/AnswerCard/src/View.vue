@@ -7,7 +7,10 @@
       :ref="el => fullPageRefsManager.setRef(el, pageIndex)">
       <!-- 单页 -->
       <div
-        id="page"
+        :id="`page_${pageIndex}`"
+        v-bind="{
+          pageOf: pageIndex,
+        }"
         class="relative h-full box-border"
         :ref="el => pageRefsManager.setRef(el, pageIndex)">
         <AnchorPoint
@@ -31,7 +34,7 @@
             :id="`${item.model?.item?.id}_${pageIndex}_block` || `${pageIndex}_${itemIndex}_block`"
             :ref="el => itemRefsManager.setRef(el, pageIndex, itemIndex)"
             :key="item.id"
-            :is="typeCompMaps[item.type] || h('div', {}, '暂不支持该组件')"
+            :is="resolveComp(item.type)"
             v-bind="{
               ...item.props,
               ...genVModels(item.model),
@@ -44,7 +47,7 @@
             }"
             :pageBox="pageRefsManager.refs.value[pageIndex]"
             :onDelete="e => handleDelete(e, item.id)"
-            :innerHeight="item.info.height"
+            :innerHeight="item?.info?.height"
             @end="updateItemInfo(item, itemIndex, pageIndex)" />
         </div>
         <AnchorPoint
@@ -58,6 +61,7 @@
     </div>
   </div>
 </template>
+
 <script lang="tsx" setup>
 import {
   computed,
@@ -65,20 +69,12 @@ import {
   nextTick,
   provide,
   watch,
-  h,
   onBeforeUnmount,
+  onMounted,
   toRaw,
   type CSSProperties,
   ref,
 } from "vue";
-import ChoiceQuestion from "./blockes/ChoiceQuestion.vue";
-import FillBlankQuestion from "./blockes/FillBlankQuestion.vue";
-import ArticleQuestion from "./blockes/ArticleQuestion.vue";
-import BriefQuestion from "./blockes/BriefQuestion.vue";
-import TopInfo from "./blockes/TopInfo.vue";
-import TopInfoHomework from "./blockes/TopInfoHomework.vue";
-import Block from "./base/Block.vue";
-import WithQustionDetail from "./blockes/WithQustionDetail.vue";
 import { getPosition } from "./utils/getPosition.ts";
 import { observeTouchBottomPlus } from "./utils/observeTouchBottom.ts";
 import AnchorPoint from "./blockes/AnchorPoint.vue";
@@ -88,6 +84,7 @@ import html2canvas from "html2canvas";
 import { base64ToFile, groupAndMergeImages } from "./utils/imageUtils.ts";
 import { createRefManager } from "./utils/refManager.ts";
 import { autoPagination } from "./utils/pagination.ts";
+import { resolveComp, type compTypes } from "./utils/questionComp.ts";
 
 const props = withDefaults(
   defineProps<{
@@ -128,28 +125,6 @@ const getStyle = computed<CSSProperties>(() => {
   };
 });
 
-export type compTypes =
-  | "EditBlock"
-  | "ChoiceQuestion"
-  | "BriefQuestion"
-  | "ArticleQuestion"
-  | "FillBlankQuestion"
-  | "WithQustionDetail"
-  | "TopInfo"
-  | "TopInfoHomework";
-
-/* 组件映射 */
-const typeCompMaps: Record<compTypes, any> = {
-  EditBlock: Block /* 编辑块 */,
-  TopInfo: TopInfo /* 顶部信息 */,
-  TopInfoHomework: TopInfoHomework /* 顶部信息作业版 */,
-  ChoiceQuestion: ChoiceQuestion /* 选择题 */,
-  BriefQuestion: BriefQuestion /* 简答题 */,
-  FillBlankQuestion: FillBlankQuestion /* 填空 */,
-  ArticleQuestion: ArticleQuestion /*作文题 */,
-  WithQustionDetail: WithQustionDetail /* 含题 */,
-};
-
 export type item = {
   id: string;
   type: compTypes;
@@ -162,6 +137,7 @@ export type item = {
   pageOf: number;
   isHeader?: boolean;
   _isCloneHeader?: boolean;
+  needCalculate?: boolean;
 };
 export type modelType = item[];
 
@@ -186,9 +162,18 @@ const groups = computed(() => {
     }
     map[item.pageOf]!.push(item);
   });
-  nextPage.value = result.length - 1 < 0 ? 0 : result.length - 1;
+
   return result;
 });
+
+// ✅ 不要在 computed 里写 nextPage（副作用会让更新顺序变诡异）
+watch(
+  () => groups.value.length,
+  len => {
+    nextPage.value = len - 1 < 0 ? 0 : len - 1;
+  },
+  { immediate: true },
+);
 
 watch(
   () => rightSetting.value.objectiveMerge,
@@ -268,23 +253,18 @@ const rebuildHeaders = () => {
   const interval = props.repeatHeaderInterval;
 
   data.value = data.value.filter(it => !it._isCloneHeader);
-
-  // 按 pageOf 排序一次（避免分布不规律）
   data.value.sort((a, b) => a.pageOf - b.pageOf);
 
-  //  重新分组
   const pageCount = groups.value.length;
 
   for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-    const shouldHaveHeader = pageIndex % interval === 0; // ✅ 不再 +1
+    const shouldHaveHeader = pageIndex % interval === 0;
 
     if (!shouldHaveHeader) continue;
-
     const pageItems = groups.value[pageIndex];
     const alreadyHasHeader = pageItems.some(it => it.isHeader || it._isCloneHeader);
 
     if (alreadyHasHeader) continue;
-
     const cloned = JSON.parse(JSON.stringify(header));
     cloned._isCloneHeader = true;
     cloned.id = SnowflakeIdGenerator.generateId();
@@ -292,10 +272,8 @@ const rebuildHeaders = () => {
 
     cloned.props = {
       ...(cloned.props || {}),
-      // breakPoint: { start: 0, end: 0 },
     };
 
-    // 插入到 data 中（保证在该页最前）
     const insertIndex = data.value.findIndex(it => it.pageOf === pageIndex);
 
     if (insertIndex === -1) {
@@ -308,6 +286,7 @@ const rebuildHeaders = () => {
   }
 };
 
+// 仍然保留：页数变化就尝试补头
 watch(
   () => groups.value.length,
   () => {
@@ -333,7 +312,7 @@ const updateItemInfo = (item: any, index: number, pageIndex: number) => {
           nextTick(() => rebuildHeaders());
         },
         {
-          offset: 0,
+          offset: 6,
           once: true,
         },
       );
@@ -341,6 +320,47 @@ const updateItemInfo = (item: any, index: number, pageIndex: number) => {
       setListInfo(pageIndex, index, page, component.$el);
     }
   });
+};
+
+const clearObservers = () => {
+  observers.forEach(stop => stop && stop());
+  observers = [];
+};
+
+onBeforeUnmount(() => {
+  clearObservers();
+  clearTimeout(reflowTimer);
+});
+
+let reflowTimer: any = null;
+let isReflowing = false;
+let pendingReflow = false;
+
+const scheduleReflow = (reason = "edit", delay = 0) => {
+  // 导出中别重排，避免画布导出抖动
+  if (isExportMode.value) return;
+
+  clearTimeout(reflowTimer);
+  reflowTimer = setTimeout(async () => {
+    if (isReflowing) {
+      pendingReflow = true;
+      return;
+    }
+    isReflowing = true;
+    try {
+      cleanupEmptyState();
+      reflowPages();
+      // 等一帧让布局稳定（富文本/图片回流更稳）
+      await nextTick();
+      await new Promise(r => requestAnimationFrame(r));
+    } finally {
+      isReflowing = false;
+      if (pendingReflow) {
+        pendingReflow = false;
+        scheduleReflow("pending", 0);
+      }
+    }
+  }, delay);
 };
 
 const reflowPages = () => {
@@ -379,7 +399,7 @@ const reflowPages = () => {
             nextTick(() => rebuildHeaders());
           },
           {
-            offset: 6,
+            offset: 0,
             once: true,
           },
         );
@@ -392,15 +412,6 @@ const reflowPages = () => {
     rebuildHeaders();
   });
 };
-
-const clearObservers = () => {
-  observers.forEach(stop => stop && stop());
-  observers = [];
-};
-
-onBeforeUnmount(() => {
-  clearObservers();
-});
 
 const cleanupEmptyState = () => {
   const hasRealContent = data.value.some(it => !it._isCloneHeader && !it.isHeader);
@@ -417,7 +428,7 @@ const cleanupEmptyState = () => {
   }
 };
 
-const deleteById = id => {
+const deleteById = (id: any) => {
   const rootId = String(id).split("_sf_")[0];
   data.value = data.value.filter(it => {
     if (it.isHeader) return true;
@@ -428,7 +439,7 @@ const deleteById = id => {
 
   nextTick(() => {
     cleanupEmptyState();
-    reflowPages();
+    scheduleReflow("delete", 0);
   });
 };
 
@@ -441,14 +452,11 @@ const handleDelete = (event: MouseEvent, id: string) => {
 };
 
 useEventBus("reflowPages", () => {
-  nextTick(() => {
-    cleanupEmptyState();
-    reflowPages();
-  });
+  scheduleReflow("eventbus", 0);
 });
 
 useEventBus("deleteById", data => {
-  deleteById(data.id);
+  deleteById((data as any).id);
 });
 
 const getQrCodeList = () => {
@@ -488,11 +496,12 @@ const getViewInfo = () => {
 
 const isExportMode = ref(false);
 provide("isExportMode", isExportMode);
+
 const pagelToCanvas = async (page: any) => {
   isExportMode.value = true;
   await nextTick();
   const points = document.getElementsByClassName("point");
-  Array.from(points).forEach(p => (p.style.visibility = "visible"));
+  Array.from(points).forEach(p => ((p as any).style.visibility = "visible"));
   try {
     const canvas = await html2canvas(page, {
       scale: 2,
@@ -504,7 +513,7 @@ const pagelToCanvas = async (page: any) => {
     console.error("pagelToCanvas:", err);
     return null;
   } finally {
-    Array.from(points).forEach(p => (p.style.visibility = "hidden"));
+    Array.from(points).forEach(p => ((p as any).style.visibility = "hidden"));
     isExportMode.value = false;
   }
 };
@@ -535,8 +544,8 @@ const getImageList = async (isFile: boolean = true) => {
 const getAllQuestionInfo = async () => {
   for (const arr of itemRefsManager.refs.value) {
     for (const it of arr) {
-      if (it?.getInfo) {
-        await it.getInfo();
+      if ((it as any)?.getInfo) {
+        await (it as any).getInfo();
       }
     }
   }

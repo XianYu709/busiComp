@@ -1,7 +1,9 @@
 import { toRaw } from "vue";
 
 const findSafeOffset = (container: HTMLElement, targetPx: number): number => {
-  const elements = container.querySelectorAll("p, span, img, .item-row, .chiose-option");
+  const elements = container.querySelectorAll(
+    "p, span, img, .item-row, .chiose-option .split-unit",
+  );
   const containerRect = container.getBoundingClientRect();
 
   let bestOffset = targetPx;
@@ -119,7 +121,7 @@ export const autoPagination = (data: any, info: any, item: any, pageOf: number) 
     return;
   }
 
-  // 屁股剩一点分页 
+  // 屁股剩一点分页
   let ratio = ratioRaw;
 
   const EPS_PX = 2;

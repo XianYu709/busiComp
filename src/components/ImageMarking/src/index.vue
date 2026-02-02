@@ -657,8 +657,7 @@ const onMouseDown = (e: MouseEvent) => {
 
   e.preventDefault();
 
-  // focus：保证 Delete/Backspace 可用
-  annotationCanvasRef.value.focus();
+ annotationCanvasRef.value.focus({ preventScroll: true });
 
   const canvasRect = annotationCanvasRef.value.getBoundingClientRect();
   const mouseX = e.clientX - canvasRect.left;

@@ -4,16 +4,17 @@
       class="absolute top-100% right-0 opacity-0 group-hover:opacity-100 flex align-start z-10"></div>
     <div class="viewport-container" :style="viewportStyle">
       <div class="content-wrapper" :style="contentStyle">
+        <div
+          v-if="isExportMode && isFirst"
+          class="text-16px font-500 text-left text-black h-30px leading-30px">
+          {{ title || " " }}
+        </div>
         <el-input
-          v-if="isFirst"
+          v-if="!isExportMode && isFirst"
           v-model="title"
           class="no-border-input input-title"
           placeholder="请输入标题"></el-input>
-        <QuestionItem
-          v-bind="item"
-          :isEnd="props.isEnd"
-          :breakPoint="{ start: 0, end: 1 }"
-          @vue:mounted="outQuestionMounded" />
+        <QuestionItem v-model="item" @vue:mounted="outQuestionMounded" />
       </div>
     </div>
     <el-dialog v-model="openModel" width="500" title="每行选择题个数" destroy-on-close>
@@ -36,12 +37,16 @@ import {
   nextTick,
   ref,
   useAttrs,
+  watch,
   type CSSProperties,
 } from "vue";
 import Block from "../base/Block.vue";
 import { parseOptions } from "@sjjb/utils";
 import { ElButton } from "element-plus";
 import { getPositionWithCache } from "../utils/getPosition";
+import { Plus } from "@element-plus/icons-vue";
+import { drawOnceRect, setAllBlockVisible } from "../utils/useAnswerAreaDrawer";
+import { log } from "fabric/fabric-impl";
 
 const props = defineProps({
   isFirst: Boolean,
@@ -55,29 +60,23 @@ const props = defineProps({
     default: () => ({ start: 0, end: 1 }),
   },
 });
-
 const emits = defineEmits(["delete", "end"]);
+
 const title = defineModel<any>("title");
 const childs = defineModel<any>("childs", { default: () => ({}) });
 const item = defineModel<any>("item", { default: () => ({}) });
+const quesionOptionLength = defineModel<string>("quesionOptionLength", { default: "50%" });
 
 const sortType = computed(() => rightSetting.value?.sortType);
 const sortFiledKey = computed(() =>
   sortType.value === "smallFollow" ? "prefix" : "bigSinglePrefix",
 );
-const rightSetting = inject<any>("AnswerCardSetting");
-
-const openModel = ref(false);
-const quesionOptionLength = defineModel<string>("quesionOptionLength", { default: "50%" });
-
 const isSplitState = computed(() => {
   const { start, end } = props.breakPoint;
   return start > 0 || (end < 1 && end > 0);
 });
-
 const viewportStyle = computed<CSSProperties>(() => {
   if (!isSplitState.value || !props.originalHeight) return { width: "100%" };
-
   const { start, end } = props.breakPoint;
   const currentViewHeight = props.originalHeight * (end - start);
 
@@ -91,7 +90,6 @@ const viewportStyle = computed<CSSProperties>(() => {
 
 const contentStyle = computed<CSSProperties>(() => {
   if (!isSplitState.value || !props.originalHeight) return { width: "100%" };
-
   const { start } = props.breakPoint;
   // 这里的偏移量必须基于原始高度
   const offsetY = props.originalHeight * start;
@@ -103,9 +101,23 @@ const contentStyle = computed<CSSProperties>(() => {
   };
 });
 
+const outAttrs = useAttrs();
+
+const isExportMode = inject<any>("isExportMode");
+const rightSetting = inject<any>("AnswerCardSetting");
+
+watch(
+  () => isExportMode.value,
+  async newVal => {
+    setAllBlockVisible(outAttrs.pageBox as HTMLElement, !newVal);
+  },
+);
+
+const openModel = ref(false);
+
 const ChioseOptionsBox = defineComponent({
   name: "ChioseOptionsBox",
-  props: { questOption: Object },
+  props: { questOption: Object, questionId: String },
   setup(props) {
     const onMouseOn = ref(false);
     const isTiantu = computed(() => rightSetting.value?.objectiveAnswerType === "tiantu");
@@ -125,7 +137,7 @@ const ChioseOptionsBox = defineComponent({
 
     return () => (
       <div
-        class='flex flex-col space-y-2 w-full relative p-2  group/option'
+        class='flex flex-col space-y-2 w-full relative p-2  group/option chiose-option '
         onMouseenter={() => (onMouseOn.value = true)}
         onMouseleave={() => (onMouseOn.value = false)}>
         {groupedOptions.value.map((row, rIndex) => (
@@ -135,7 +147,9 @@ const ChioseOptionsBox = defineComponent({
                 key={idx}
                 class='flex items-start font-normal text-14px color-#333333'
                 style={{ width: quesionOptionLength.value }}>
-                <span class='mt-4px'>{isTiantu.value ? `[ ${opt.key} ]` : opt.key}</span>
+                <span class='mt-5px mb-4px' id={props.questionId + "_options_" + opt.key}>
+                  {isTiantu.value ? `[ ${opt.key} ]` : opt.key}
+                </span>
                 <span class='mt-3px ml-3px'>、</span>
                 <Block class='flex-1' v-model={opt.text} border={false} />
               </div>
@@ -143,9 +157,9 @@ const ChioseOptionsBox = defineComponent({
           </div>
         ))}
         {onMouseOn.value && (
-          <div class='absolute bottom-full right-0'>
+          <div class='absolute bottom-full right-4'>
             <ElButton type='primary' link size='small' onClick={() => (openModel.value = true)}>
-              设置每行数量
+              设置每行选项数量
             </ElButton>
           </div>
         )}
@@ -154,56 +168,129 @@ const ChioseOptionsBox = defineComponent({
   },
 });
 
-const outAttrs = useAttrs();
 const outQuestionMounded = async () => {};
 
 const QuestionItem = defineComponent({
   name: "QuestionItem",
   props: {
-    id: [String, Number],
-    parentId: [String, Number],
-    prefix: [String, Number],
-    bigSinglePrefix: [String, Number],
-    resQuestionContentVo: { type: Object, default: () => ({}) },
-    isObjective: [Number, String],
-    children: { type: Array, default: () => [] },
-    childs: { type: Array, default: () => [] },
-    answerType: Number,
-    isEnd: Boolean,
+    modelValue: {
+      type: Object as any,
+      required: true,
+    },
   },
-  setup(props) {
+  emits: ["update:modelValue"],
+  setup(props, { emit: questionEmits }) {
+    const singleQuestionType = computed(() => [1, 2, 3, 6].includes(props.modelValue.answerType));
     const questionBoxRef = ref<HTMLElement | null>(null);
     const blockMountend = async () => {
       await nextTick();
       emits("end");
     };
+    const show = ref(false);
+    const prefix = computed(() =>
+      props.modelValue[sortFiledKey.value] ? `${props.modelValue[sortFiledKey.value]}.` : "",
+    );
+
+    const addAnswerArea = async (params: any) => {
+      const pageBox = outAttrs.pageBox as HTMLElement;
+      const pageOf = outAttrs.pageOf;
+      const id = `${params.questionId}_answerArea_${Date.now()}`;
+
+      await drawOnceRect({
+        container: pageBox,
+        id,
+        prefix: props.modelValue?.bigQuestionNumber + "、" + params.prefix,
+        onDelete: async ({ id }: { id: string }) => {
+          questionEmits("update:modelValue", {
+            ...props.modelValue,
+            answerAreaList: (props.modelValue.answerAreaList || []).filter(item => item.id !== id),
+          });
+        },
+      });
+
+      questionEmits("update:modelValue", {
+        ...props.modelValue,
+        answerAreaList: [
+          ...(props.modelValue.answerAreaList || []),
+          {
+            id,
+            label: params.prefix,
+            pageOf,
+            ...params,
+            type: singleQuestionType.value ? "objective" : "subjective",
+          },
+        ],
+      });
+    };
+
+    const allowShow = computed(() =>
+      singleQuestionType.value
+        ? rightSetting.value?.objectiveAnswerType === "shouxie" &&
+          (props.modelValue?.answerAreaList || []).length == 0
+        : true,
+    );
 
     return () => (
       <div
-        id={`${props.id}_${outAttrs.pageOf}_question`}
-        class='mb-4 flex items-start w-full relative'
-        data-pid={props.parentId}
-        ref={questionBoxRef}>
+        id={`${props.modelValue.id}_${outAttrs.pageOf}_question`}
+        class='mb-4 flex items-start w-full relative  '
+        data-pid={props.modelValue.parentId}
+        ref={questionBoxRef}
+        onMouseenter={() => (show.value = true)}
+        onMouseleave={() => (show.value = false)}>
+        <ElButton
+          style={{ visibility: allowShow.value && show.value ? "visible" : "hidden" }}
+          class='absolute right-0  top-0 -transform-translate-y-100%  z-99 '
+          text
+          link
+          type='primary'
+          icon={Plus}
+          onClick={() =>
+            addAnswerArea({
+              prefix: prefix.value,
+              questionId: props.modelValue.id,
+            })
+          }>
+          绘制作答识别区
+        </ElButton>
+
         <p class='pt-5px mr-0px text-14px'>
           {/* {outAttrs.pageOf}-- */}
-          {props[sortFiledKey.value] ? `${props[sortFiledKey.value]}.` : ""}
+          {prefix.value}
         </p>
         <div class='flex-1'>
           <Block
             class='mb-2 w-full'
-            v-model={props.resQuestionContentVo.questTopic}
+            v-model={props.modelValue.resQuestionContentVo.questTopic}
             activeBorder
             border={false}
             editViewMerge={false}
             onMount-done={blockMountend}
           />
-          {[1, 2, 3, 6].includes(props.answerType) && props.resQuestionContentVo.questOption && (
-            <ChioseOptionsBox questOption={JSON.parse(props.resQuestionContentVo.questOption)} />
+          {singleQuestionType.value && props.modelValue.resQuestionContentVo.questOption && (
+            <ChioseOptionsBox
+              questOption={JSON.parse(props.modelValue.resQuestionContentVo.questOption)}
+              questionId={props.modelValue.id}
+            />
           )}
-          {props.children?.length > 0 && (
+          {props.modelValue.children?.length > 0 && (
             <div class='mt-2 pl-4 border-l border-gray-100'>
-              {props.children.map((child: any) => (
-                <QuestionItem {...child} />
+              {props.modelValue.children.map((child: any) => (
+                <QuestionItem
+                  modelValue={child}
+                  onUpdate:modelValue={e => {
+                    const updatedChildren = (props.modelValue.children || []).map((c: any) => {
+                      if (c.id === e.id) {
+                        return e;
+                      }
+                      return c;
+                    });
+                    questionEmits("update:modelValue", {
+                      ...props.modelValue,
+                      children: updatedChildren,
+                    });
+                  }}
+                />
               ))}
             </div>
           )}
@@ -231,6 +318,7 @@ const transformQuestion = (item: any): any => {
     questionTypeName: item.questionTypeName,
     questionType: item.questionType,
     contentList: getOptionKeys(item),
+    answerAreaList: item.answerAreaList || [],
     childs: Array.isArray(item.children)
       ? item.children.map((child: any) => transformQuestion(child))
       : [],
@@ -239,37 +327,66 @@ const transformQuestion = (item: any): any => {
 
 const getInfo = async () => {
   const end = transformQuestion(item.value);
-  if (end.id && outAttrs?.pageBox) {
-    const pageBox = outAttrs.pageBox as HTMLElement;
-    const questionBlock = pageBox.ownerDocument.getElementById(
-      `${end.id}_${outAttrs.pageOf}_block`,
-    ) as HTMLElement;
-    const { flag, data } = await getPositionWithCache(pageBox, questionBlock, "none");
-    if (data && flag == "new") {
-      end.infoList = [
-        {
-          ...data!.percentage,
-          pageOf: (outAttrs?.pageOf as number) + 1,
-        },
-      ];
-    }
-    if (end?.childs && end?.childs.length > 0) {
-      for (const chid of end.childs) {
-        const questionBox = pageBox.ownerDocument.getElementById(
-          `${chid.id}_${outAttrs.pageOf}_question`,
-        ) as HTMLElement;
-        const { flag, data } = await getPositionWithCache(pageBox, questionBox, "none");
-        if (data && flag == "new") {
-          chid.infoList = [
-            {
-              ...data!.percentage,
-              pageOf: (outAttrs?.pageOf as number) + 1,
-            },
-          ];
-        }
+
+  const pageBox = outAttrs?.pageBox as HTMLElement | undefined;
+  if (!end.id || !pageBox) {
+    childs.value = [end];
+    return;
+  }
+  const pageDocument = pageBox.ownerDocument;
+  // const pageOf = (Number(pageBox.getAttribute("pageof")) || 0) + 1;
+  const pageOf = outAttrs.pageOf;
+  const pushPos = (target: any, key: string, percentage: any, pageOf: number) => {
+    target[key] = [...(target[key] || []), { ...percentage, pageOf }];
+  };
+  const calcPos = async (elId: string) => {
+    const el = pageDocument.getElementById(elId) as HTMLElement | null;
+    if (!el) return null;
+    const { flag, data } = await getPositionWithCache(pageBox, el, "none");
+    if (!data || flag !== "new") return null;
+
+    return data.percentage;
+  };
+
+  const setMoudlePosInTarget = async (elId: string, pageOf: number, target: any) => {
+    const p = await calcPos(elId);
+    if (p) pushPos(target, "infoList", p, pageOf);
+
+    if (target.answerAreaList?.length) {
+      const results = await Promise.all(
+        target.answerAreaList.map(async (area: any) => ({
+          area,
+          p: await calcPos(area.id),
+        })),
+      );
+
+      for (const { area, p } of results) {
+        if (!p) continue;
+        if (area.type === "subjective") pushPos(target, "infoList", p, pageOf);
+        if (area.type === "objective") pushPos(target, "choiceArea", p, pageOf);
       }
     }
+    if ([1, 2, 3, 6].includes(target.answerType) && target.contentList?.length > 0) {
+      const optionsInfo = await Promise.all(
+        target.contentList.map(key => {
+          return calcPos(`${target.id}_options_${key}`);
+        }),
+      );
+
+      optionsInfo.forEach(item => {
+        pushPos(target, "contentInfoList", item, pageOf);
+      });
+    }
+  };
+
+  await setMoudlePosInTarget(`${end.id}_${outAttrs.pageOf}_block`, pageOf, end);
+
+  if (end.childs?.length) {
+    for (const chid of end.childs) {
+      await setMoudlePosInTarget(`${chid.id}_${outAttrs.pageOf}_question`, pageOf, chid);
+    }
   }
+
   childs.value = [end];
 };
 

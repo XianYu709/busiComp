@@ -82,15 +82,28 @@
         <el-radio-button label="二档线" value="2" />
       </el-radio-group>
     </div>
+    <div v-if="props.selectRanking" class="my-10px text-align-end">
+      <el-select v-model="rankingSelectValue" @change="rankingSelectChange" placeholder="Select" style="width: 240px">
+        <el-option
+          v-for="item in rankingSelectOptions"
+          :key="item.key"
+          :label="item.label"
+          :value="item.value"
+        />
+      </el-select>
+    </div>
     <Core 
       ref="coreRef"
       :api="api" 
       :type="type" 
+      :barTypeDefine="barTypeDefine"
+      :selectRanking="props.selectRanking"
       :cols="tableChrtCols" 
       :showDialogType="showDialogType" 
       :colsData="tableChrtColsData"
       :fields="fields" 
       :itemLabelField="itemLabelField" 
+      @update-ranking-options="handleRankingOptionsUpdate"
     />
   </Card>
 
@@ -129,16 +142,27 @@ const props = withDefaults(
     tableChrtCols: any[],
     tableChrtColsData: any[],
     type: string,
+    barTypeDefine: string,
+    selectRanking: boolean,
+    selectDropdown: string,
     showDialogType: number,
     isShowTitle: boolean,
     rankSelectValue: number,
     isRadius: boolean,
     domId: string,
-  }>(), {},
+  }>(), 
+  { selectRanking: false }
 );
 const gradingRadio = ref(1)
 const type = ref<any>(props.type);
 const fields = ref<any>([...props.cols.filter(it => !it.hiddenInChart).map(item => item.prop)]);
+
+const rankingSelectValue = ref()
+const rankingSelectOptions = ref()
+const handleRankingOptionsUpdate = (options: any[]) => {
+  rankingSelectOptions.value = options
+  rankingSelectValue.value = options[0].value
+}
 
 // 添加 coreRef
 const coreRef = ref();
@@ -175,6 +199,13 @@ const handleSubsectionBtn = () => {
 }
 const handleRankBtn = () => {
   showRankDialog.value = false
+}
+
+const rankingSelectChange = (sled: string) => {
+  console.log(sled,"--------------");
+  if (coreRef.value?.initBarChart) {
+    coreRef.value.initBarChart(sled);
+  }
 }
 
 // 添加 refresh 方法，透传给 Core 组件

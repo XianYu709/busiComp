@@ -232,8 +232,7 @@ const renderSegment = (item: any) => {
             vertical-align:bottom;
             width: calc(${rate * 100}% - ${rate * 100 - 5}px);
           "
-        >
-          ${i === 0 ? prefixHtml : prefixWidthHtml}
+        ><span style="white-space:nowrap;"> ${i === 0 ? prefixHtml : prefixWidthHtml}</span>
           ${getItem(rate, b.score, b)}
         </span>
       `;
@@ -244,7 +243,7 @@ const renderSegment = (item: any) => {
 
   // 单空
   const rate = Number(item.width.replace("%", "")) / 100;
-  
+
   return `
     <span
       style="

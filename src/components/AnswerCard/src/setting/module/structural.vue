@@ -1,11 +1,7 @@
 <template>
   <div class="px-20px -mb-15px">
-    <QuestBar
-      v-if="!onlyArticle"
-      v-for="(it, _) in getQuestionBarList"
-      :="it"
-      :itemIndex="it.selftIndex" />
-    <div class="grid grid-cols-3 gap-3" :class="onlyArticle ? '' : 'mt-5'">
+    <QuestBar v-for="(it, _) in getQuestionBarList" :="it" :itemIndex="it.selftIndex" />
+    <div class="grid grid-cols-3 gap-3 mt-4">
       <div v-for="button in addButtons">
         <ElButton
           class="w-full"
@@ -87,7 +83,7 @@ const addButtons = computed(() => {
       label: "英语作文",
       params: {
         type: "BriefQuestion",
-        answerTypes: "5",
+        answerTypes: "7",
       },
     },
     {

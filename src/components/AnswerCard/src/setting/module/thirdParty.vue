@@ -12,7 +12,9 @@
     </div>
     <Table border :data="data">
       <template #default-expand="{ row }">
-        <ChildsTable class="-my-10px" border :data="row.childs" :columns="colMap[row.type]" />
+        <div class="expand-wrap">
+          <ChildsTable border :data="row.childs" :columns="colMap[row.type]" />
+        </div>
       </template>
     </Table>
   </div>
@@ -28,6 +30,7 @@ import { Plus } from "@element-plus/icons-vue";
 import { transformToThin } from "../../utils/addTransform";
 import { ElButton } from "element-plus";
 import SetInfo from "./SetInfo";
+import { showPopConfirm } from "../../utils/showPopConfirm";
 
 const [AddQuestion, AddQuestionIns] = useFunComp(addQuestion);
 const data = inject("threeQuestionInfo") as any;
@@ -71,7 +74,7 @@ const getButtons = (scope, optionList) => {
     return (
       <>
         <div class='flex items-center cursor-pointer'>
-          <a onClick={() => item.click(scope)}>{item.label}</a>
+          <a onClick={e => item.click(scope, e)}>{item.label}</a>
         </div>
         {optionList.length != index + 1 && <div class='mr-5px'></div>}
       </>
@@ -79,6 +82,8 @@ const getButtons = (scope, optionList) => {
   });
   return h("div", { class: "flex text-[#0E5FC7]  items-center  justify-center" }, comp);
 };
+
+const markFuns = inject<any>("markFuns");
 
 const [Table] = useTable({
   rowKey: "id",
@@ -127,7 +132,11 @@ const [Table] = useTable({
           },
           {
             label: "删除",
-            click: scope => {
+            click: (scope, e) => {
+              scope.childs.forEach(it => {
+                const label = scope.bigQuestionNumber + "、" + it.prefix;
+                markFuns.deleteAllByLabel(label);
+              });
               data.value = data.value.filter(item => item.id != scope.id);
             },
           },
@@ -137,14 +146,16 @@ const [Table] = useTable({
   ],
 });
 
-const childAction = {
-  label: "操作",
-  prop: "paperScore",
-  align: "center",
-  render: ({ row }) => {
-    const label = row.bigQuestionNumber + "、" + row.prefix;
-    return <SetInfo label={label} type='text' v-model:infoList={row.infoIdList} />;
-  },
+const creatChildAction = (more = false) => {
+  return {
+    label: "操作",
+    prop: "paperScore",
+    align: "center",
+    render: ({ row }) => {
+      const label = row.bigQuestionNumber + "、" + row.prefix;
+      return <SetInfo label={label} type='text' v-model:infoList={row.infoIdList} more={more} />;
+    },
+  };
 };
 
 const ChoiceCols = [
@@ -180,7 +191,7 @@ const ChoiceCols = [
       return row.contentList.length;
     },
   },
-  childAction,
+  creatChildAction(false),
 ];
 
 const FillBlankCols = [
@@ -219,7 +230,7 @@ const FillBlankCols = [
       return row.block.length;
     },
   },
-  childAction,
+  creatChildAction(true),
 ];
 
 const BriefCols = [
@@ -249,16 +260,7 @@ const BriefCols = [
     align: "center",
     width: 60,
   },
-  {
-    label: "横线数",
-    prop: "contentList",
-    align: "center",
-    width: 90,
-    render: ({ row }) => {
-      return row.lineCount;
-    },
-  },
-  childAction,
+  creatChildAction(true),
 ];
 
 const ArticleCols = [
@@ -277,19 +279,15 @@ const ArticleCols = [
     label: "标记间隔",
     prop: "wordMarkInterval",
     align: "center",
-  },
-  {
-    label: "格子大小",
-    prop: "gridSize",
-    align: "center",
+    width: 100,
   },
   {
     label: "字数",
     prop: "wordCount",
     align: "center",
-    width: 90,
+    width: 70,
   },
-  childAction,
+  creatChildAction(true),
 ];
 
 const colMap: Record<string, any[]> = {
@@ -326,4 +324,16 @@ const onEditQuestion = (edited: any) => {
 };
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+/* expand 单元格 element-plus 默认有 padding，会配合你负 margin/高度计算出“1px 溢出” */
+:deep(.el-table__expanded-cell) {
+  padding: 0 !important;
+}
+
+/* expand 内容区域：不要写死高度，避免 90% 这种误差；同时不让它产生滚动条 */
+.expand-wrap {
+  margin: 0;
+  height: auto;
+  overflow: hidden; /* 关键：直接杜绝那种 1px 的溢出滚动条 */
+}
+</style>

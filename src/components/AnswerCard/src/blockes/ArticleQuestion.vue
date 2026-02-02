@@ -3,9 +3,9 @@
     <div class="group relative w-full">
       <div
         class="absolute top-0 right-0 opacity-0 group-hover:opacity-100 flex flex-col align-start z-10">
-        <div>
+        <!-- <div>
           <el-button @click="visible = true" text>设置作文</el-button>
-        </div>
+        </div> -->
         <div>
           <el-button @click="e => $emit('delete', e)" text type="danger">删除</el-button>
         </div>

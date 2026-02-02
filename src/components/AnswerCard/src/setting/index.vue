@@ -1,5 +1,5 @@
 <template>
-  <Card :body-style="{ padding: '0', overflow: 'hidden' }">
+  <Card :body-style="{ padding: '0 ', overflow: 'hidden' }">
     <div
       ref="draggableAreaRef"
       class="right-title flex justify-between items-center"
@@ -9,58 +9,63 @@
         <slot name="right-title-slot"></slot>
       </div>
     </div>
-    <!--    <ElScrollbar height="630px">-->
-    <ElCollapse style="width: 99%" :model-value="['list', 'base', 'structural', 'submit', 'score']">
-      <!-- 基本设置 -->
-      <ElCollapseItem name="base" v-if="props.showMoudle.includes('base')">
-        <template #title>
-          <div class="right-title">基本设置</div>
-        </template>
-        <BaseModule
-          :show-set-info="props.showSetInfo"
-          :show-setting="props.showSetting"
-          v-model:data="data"
-          v-model:setting="setting" />
-      </ElCollapseItem>
-      <!-- 题目结构 -->
-      <ElCollapseItem name="structural" v-if="props.showMoudle.includes('structural')">
-        <template #title>
-          <div class="right-title">题目结构</div>
-        </template>
-        <StructuralModule v-model:data="data" v-bind:max-question-number="maxQuestionNumber" />
-      </ElCollapseItem>
-      <!-- 题目分值 -->
-      <ElCollapseItem name="score" v-if="props.showMoudle.includes('score')">
-        <template #title>
-          <div class="right-title">题目分值</div>
-        </template>
-        <ScoreModule v-model:data="data" />
-      </ElCollapseItem>
-      <!-- 三方 -->
-      <ElCollapseItem name="score" v-if="props.showMoudle.includes('thirdParty')">
-        <template #title>
-          <div class="right-title">模板设置</div>
-        </template>
-        <ThirdParty v-model:data="data" v-model:max-question-number="maxQuestionNumber" />
-      </ElCollapseItem>
-      <!-- 操作 -->
-      <ElCollapseItem name="submit" v-if="props.showMoudle.includes('submit')">
-        <template #title>
-          <div class="right-title">操作</div>
-        </template>
-        <div class="px-20px flex">
-          <slot name="submit"></slot>
-        </div>
-      </ElCollapseItem>
-    </ElCollapse>
-    <!--    </ElScrollbar>-->
+    <ElScrollbar :style="scrollStyle">
+      <ElCollapse
+        :model-value="['list', 'base', 'structural', 'submit', 'score']"
+        style="width: 99%">
+        <!-- 基本设置 -->
+        <ElCollapseItem name="base" v-if="props.showMoudle.includes('base')">
+          <template #title>
+            <div class="right-title">基本设置</div>
+          </template>
+          <BaseModule
+            :show-set-info="props.showSetInfo"
+            :show-setting="props.showSetting"
+            v-model:data="data"
+            v-model:setting="setting" />
+        </ElCollapseItem>
+        <!-- 题目结构 -->
+        <ElCollapseItem name="structural" v-if="props.showMoudle.includes('structural')">
+          <template #title>
+            <div class="right-title">题目结构</div>
+          </template>
+          <StructuralModule v-model:data="data" v-bind:max-question-number="maxQuestionNumber" />
+        </ElCollapseItem>
+        <!-- 题目分值 -->
+        <ElCollapseItem name="score" v-if="props.showMoudle.includes('score')">
+          <template #title>
+            <div class="right-title">题目分值</div>
+          </template>
+          <ScoreModule v-model:data="data" />
+        </ElCollapseItem>
+        <!-- 三方 -->
+        <ElCollapseItem name="score" v-if="props.showMoudle.includes('thirdParty')">
+          <template #title>
+            <div class="right-title">模板设置</div>
+          </template>
+          <ThirdParty v-model:data="data" v-model:max-question-number="maxQuestionNumber" />
+        </ElCollapseItem>
+        <!-- 操作 -->
+        <ElCollapseItem
+          name="submit"
+          class="submit-sticky"
+          v-if="props.showMoudle.includes('submit')">
+          <template #title>
+            <div class="right-title">操作</div>
+          </template>
+          <div class="px-20px flex">
+            <slot name="submit"></slot>
+          </div>
+        </ElCollapseItem>
+      </ElCollapse>
+    </ElScrollbar>
   </Card>
 </template>
 
 <script setup name="ScoreBoard" lang="tsx">
 import { Card } from "@sjjb/components";
 import { ElCollapse } from "element-plus";
-import { computed, provide, ref } from "vue";
+import { computed, provide, ref, type CSSProperties } from "vue";
 import BaseModule from "./module/base.vue";
 import StructuralModule from "./module/structural.vue";
 import ScoreModule from "./module/score.vue";
@@ -68,6 +73,7 @@ import ThirdParty from "./module/thirdParty.vue";
 
 const props = withDefaults(
   defineProps<{
+    scrollStyle?: CSSProperties;
     nextPage?: number;
     showMoudle?: ("base" | "structural" | "submit" | "score" | "thirdParty")[];
     showSetInfo?: boolean;
@@ -129,6 +135,24 @@ provide("maxQuestionNumber", maxQuestionNumber);
   .el-form-item {
     margin-bottom: 5px;
   }
+}
+
+:deep(.el-scrollbar__wrap) {
+  position: relative;
+}
+
+:deep(.submit-sticky) {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: #fff;
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.06);
+}
+
+/* 让吸底区域上下更干净（可选） */
+:deep(.submit-sticky .el-collapse-item__header),
+:deep(.submit-sticky .el-collapse-item__wrap) {
+  background: #fff;
 }
 </style>
 <style lang="scss">

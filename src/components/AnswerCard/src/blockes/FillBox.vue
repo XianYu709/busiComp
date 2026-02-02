@@ -14,7 +14,7 @@
       <!-- 前缀 -->
       <template
         v-if="defaultSetting.prefix || groupSetting.prefix || defaultSetting.prefixType !== 'hide'">
-        <div class="w-27px flex justify-center items-center" :class="getPrefixBorderClass()">
+        <div class="w-27px text-13px flex justify-center items-center" :class="getPrefixBorderClass()">
           {{ getPrefixText(groupSetting, index) }}
         </div>
       </template>

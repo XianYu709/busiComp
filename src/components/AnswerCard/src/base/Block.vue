@@ -25,6 +25,7 @@
         :init="editorInit"
         :inline="true"
         :tinymceScriptSrc="tinymceCdn"
+        @update:modelValue="scheduleReflow"
         @onBlur="leaveEdit" />
     </div>
 
@@ -38,12 +39,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount, nextTick, inject } from "vue";
 // 使用官方 Vue 集成 @tinymce/tinymce-vue
 // 项目未安装依赖时，可使用 CDN scriptSrc 方式
 // @ts-ignore
 import Editor from "@tinymce/tinymce-vue";
 import FormulaEditor from "./FormulaEditor.vue";
+import { emitEvent } from "@sjjb/utils";
 
 const props = withDefaults(
   defineProps<{
@@ -68,7 +70,24 @@ const emit = defineEmits<{
   (e: "mount-done"): void;
 }>();
 
+const isExportMode = inject<any>("isExportMode", null);
+
+let debounceTimer: any = null;
+
+const scheduleReflow = () => {
+  if (isExportMode?.value) return; // 导出模式别抖分页
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    // emitEvent("reflowPages", { reason: "block-edit" });
+  }, 450);
+};
+
 const innerValue = ref<string>("");
+
+onBeforeUnmount(() => {
+  clearTimeout(debounceTimer);
+});
+
 const isEditing = ref(false);
 const rootRef = ref<HTMLElement | null>(null);
 const instanceId = Math.random().toString(36).slice(2);

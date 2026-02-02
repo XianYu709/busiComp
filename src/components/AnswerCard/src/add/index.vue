@@ -22,12 +22,9 @@
       <el-form-item label="题目名称">
         <el-input v-model="params.questionName" style="width: 200px"></el-input>
       </el-form-item>
-      <template v-if="params.fixedData.params.answerTypes == '7'">
-        <el-form-item label="分数">
-          <el-input v-model="params.score" style="width: 200px" type="number" :min="0"></el-input>
-        </el-form-item>
-        <ArticleSettingView v-model="params.articleSetting" />
-      </template>
+      <ArticleSettingView
+        v-if="params.fixedData.params.type == 'ArticleQuestion'"
+        v-model="params.articleSetting" />
       <AddQuestionLine
         v-else
         v-model:groups="params.groups"
@@ -124,7 +121,7 @@ const open = async (typeItem: any, maxCount: number) => {
     params.value.bigQuestionNumber = nextNumber ? nextNumber : "一";
   }
 
-  if (typeItem.params.answerTypes == "7") {
+  if (typeItem.params.type == "ArticleQuestion") {
     params.value.articleSetting = {
       ...articleSetting,
       score: params.value.score,
@@ -181,60 +178,80 @@ const props = defineProps({
   },
 });
 
-// const AddSingleQuestionNeedAnswer = inject("AddSingleQuestionNeedAnswer");
-
 const confirmHandler = async () => {
   const data = params.value;
 
   if (!data.bigQuestionNumber) {
-    ElMessage.error("请填写大题号");
+    ElMessage.warning("请填写大题号");
     return;
+  }
+
+  if (data.fixedData.params.type === "ArticleQuestion") {
+    if (!data.articleSetting.questionTypeId) {
+      ElMessage.warning("请选择类型");
+      return;
+    }
+    if (!data.articleSetting.score) {
+      ElMessage.warning("请设置分值");
+      return;
+    }
   }
 
   if (!data.questionName) {
-    ElMessage.error("请填写题目名称");
+    ElMessage.warning("请填写题目名称");
     return;
   }
 
-  if (!["作文", "选择题"].includes(data.fixedData.label)) {
+  if (!["ChoiceQuestion", "ArticleQuestion"].includes(data.fixedData.params.type)) {
     if (!data.groups?.length || !data.groups[0]?.questionList?.length) {
-      ElMessage.error("请配置题目");
+      ElMessage.warning("请配置题目");
       return;
     }
   }
 
   for (const group of data.groups || []) {
     for (const question of group.questionList || []) {
-      if (!question.score || question.score <= 0) {
-        ElMessage.error(`请填写第 ${question.prefix} 题的分数`);
-        return;
-      }
+      const type = data.fixedData.params.type;
+      const blocks = Array.isArray(question.block) ? question.block : [];
+      const isBrief = type === "BriefQuestion";
+      const isFill = type === "FillBlankQuestion";
+      const isMultiBlank = blocks.length > 1;
 
-      if (Array.isArray(question.block)) {
-        for (let i = 0; i < question.block.length; i++) {
-          const block = question.block[i];
-          if (!block.score || block.score <= 0) {
-            ElMessage.error(
-              `请填写第 ${question.prefix} 题` +
-                (question.block.length > 1 ? `第 ${i + 1} 空` : "") +
-                " 的分数",
-            );
+      if (isBrief || isFill) {
+        if (isMultiBlank) {
+          for (let i = 0; i < blocks.length; i++) {
+            const block = blocks[i];
+            if (!block.score || block.score <= 0) {
+              ElMessage.warning(`请填写第 ${question.prefix} 题第 ${i + 1} 空的分数`);
+              return;
+            }
+          }
+        } else {
+          if (!question.score || question.score <= 0) {
+            ElMessage.warning(`请填写第 ${question.prefix} 题的分数`);
             return;
           }
         }
+      } else {
+        if (!question.score || question.score <= 0) {
+          ElMessage.warning(`请填写第 ${question.prefix} 题的分数`);
+          return;
+        }
       }
-      if (data.fixedData.label === "选择题" && true) {
+
+      if (type === "ChoiceQuestion") {
         const ans = question.answer;
         const hasAnswer =
           (typeof ans === "string" && ans !== "") || (Array.isArray(ans) && ans.length > 0);
 
         if (!hasAnswer) {
-          ElMessage.error(`请选择第 ${question.prefix} 题的正确答案`);
+          ElMessage.warning(`请选择第 ${question.prefix} 题的正确答案`);
           return;
         }
       }
     }
   }
+
   const handler = isEdit.value ? props.onEditQuestion : props.onAddQuestion;
   await handler(data);
 

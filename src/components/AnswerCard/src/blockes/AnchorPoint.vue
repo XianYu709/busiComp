@@ -17,15 +17,15 @@ const props = defineProps({
   },
   hideMiddlePoint: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 });
 
 // const front = ref(props.page % 2 !== 0);
 const date = new Date();
 const dateStr = ref("");
 dateStr.value =
-  "DEV 0.5" +
+  "DEV 0.7" +
   "-" +
   Number(date.getMonth() + 1) +
   "-" +
@@ -35,8 +35,7 @@ dateStr.value =
   ":" +
   date.getMinutes();
 
-const isDev = computed(() => import.meta.env.VITE_APP_ENV == 'development')
-
+const isDev = computed(() => import.meta.env.VITE_APP_ENV == "development");
 
 const pageNo = computed(() => props.page + 1); // 1-based
 
@@ -74,20 +73,28 @@ const hideRight = computed(() => {
 <template>
   <!-- top -->
   <div v-if="props.position == 'top'" class="point" style="visibility: hidden">
-    <div v-if="!hideLeft" style="background-color: #000000; width: 25px; height: 15px; float: left" id="topLeftPoint">
-    </div>
-    <div v-if="!hideRight" style="background-color: #000000; width: 25px; height: 15px; float: right"></div>
+    <div
+      v-if="!hideLeft"
+      style="background-color: #000000; width: 25px; height: 15px; float: left"
+      id="topLeftPoint"></div>
+    <div
+      v-if="!hideRight"
+      style="background-color: #000000; width: 25px; height: 15px; float: right"></div>
   </div>
 
   <!-- page number -->
-  <div v-if="props.position == 'bottom'" class="absolute bottom-22px left-50% -transform-translate-x-50%"
+  <div
+    v-if="props.position == 'bottom'"
+    class="absolute bottom-22px left-50% -transform-translate-x-50%"
     style="font-size: 11px; text-align: center; line-height: 15px; height: 15px">
     第{{ props.page + 1 }}页 共{{ props.pageSize }}页
   </div>
 
   <!-- bottom -->
   <div class="point" style="visibility: hidden">
-    <div v-if="!hideLeft" style="
+    <div
+      v-if="!hideLeft"
+      style="
         background-color: #000000;
         width: 25px;
         height: 15px;
@@ -95,7 +102,8 @@ const hideRight = computed(() => {
         position: absolute;
         left: 0;
         bottom: 0;
-      " id="bottomLeftPoint"></div>
+      "
+      id="bottomLeftPoint"></div>
 
     <!-- bottom center -->
     <div class="absolute bottom-0 left-50% -transform-translate-x-50% flex gap-3">
@@ -103,7 +111,9 @@ const hideRight = computed(() => {
       <div class="w-15px h-15px bg-black"></div>
     </div>
 
-    <div v-if="!hideRight" style="
+    <div
+      v-if="!hideRight"
+      style="
         background-color: #000000;
         width: 25px;
         height: 15px;

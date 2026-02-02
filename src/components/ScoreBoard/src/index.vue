@@ -10,10 +10,7 @@
             <div class="right-title">批阅</div>
           </template>
           <div class="flex flex-col px-20px -mb-15px">
-            <StudentMark
-              v-for="(stu, index) in endList"
-              :stu="stu"
-              :index="index" />
+            <StudentMark v-for="(stu, index) in endList" :stu="stu" :index="index" />
           </div>
         </el-collapse-item>
         <ElCollapseItem name="mark" v-if="props.showMoudle.includes('mark')">
@@ -43,10 +40,7 @@
                 " />
             </div>
             <div class="self-start pt-20px px-20px -mb-15px">
-              <StudentMark
-                v-for="(stu, index) in currentList"
-                :stu="stu"
-                :index="index" />
+              <StudentMark v-for="(stu, index) in currentList" :stu="stu" :index="index" />
             </div>
             <div
               v-if="markType == 2"
@@ -96,7 +90,7 @@
             <div class="right-title">分数提交</div>
           </template>
           <div class="px-20px flex items-center">
-            <slot name="submit" :submit="() => submitHander(currentList)">
+            <slot name="submit" :submit="() => submitHander(currentList, true)">
               <ElButton
                 type="primary"
                 class="mr-20px"

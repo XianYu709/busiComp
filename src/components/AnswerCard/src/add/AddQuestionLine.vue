@@ -18,17 +18,17 @@
         <el-input
           type="number"
           style="width: 70px"
-          v-model="it.startNum"
+          v-model.number="it.startNum"
           @change="createChildQustion(it)"
           :disabled="i !== 0 || !it.questionTypeId"
-          :min="it.startNum" />
+          :min="0" />
         题
 
         <span class="mx-2">到</span>
         <el-input
           type="number"
           style="width: 70px"
-          v-model="it.endNum"
+          v-model.number="it.endNum"
           @change="createChildQustion(it)"
           :disabled="!it.questionTypeId"
           :min="it.startNum" />
@@ -66,6 +66,7 @@ import { ElMessage } from "element-plus";
 import { computed, ref, watch } from "vue";
 import { createNextOptions } from "./nextOptions";
 import { Minus, Plus } from "@element-plus/icons-vue";
+import { getQuestionTypes } from "../api";
 
 const props = defineProps({
   category: {
@@ -79,35 +80,7 @@ const groups = defineModel<any[]>("groups", {
   default: () => [],
 });
 
-let request: any;
-try {
-  // @ts-ignore
-  request = window.request;
-} catch (error) {
-  console.error("请检查子项目是否设置了全局axios实例！");
-}
-
 const typeOptions = ref<any[]>([]);
-async function getQuestionTypes(params?: object) {
-  const urlParams = new URLSearchParams(window.location.search);
-  const info = JSON.parse(urlParams.get("info") || "{}");
-
-  const res = await request({
-    url: "/mainten-center/res/questionType/getList",
-    params: {
-      ...params,
-      periodId: info?.period,
-      subjectId: info?.subject,
-    },
-    method: "get",
-  });
-
-  typeOptions.value = res.rows.map(item => ({
-    label: item.name,
-    value: item.id,
-    answerType: item.answerType,
-  }));
-}
 
 let msgHander: any;
 const findAnswerType = (id: number) => {
@@ -123,8 +96,14 @@ const findAnswerType = (id: number) => {
 
 watch(
   () => props.category,
-  val => {
-    getQuestionTypes(val?.params);
+  async val => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const info = JSON.parse(urlParams.get("info") || "{}");
+    typeOptions.value = await getQuestionTypes({
+      ...val?.params,
+      periodId: info?.period || info?.periodId,
+      subjectId: info?.subject || info?.subjectId,
+    });
   },
   { immediate: true, deep: true },
 );
@@ -174,6 +153,7 @@ const createChildQustion = (it: any) => {
         contentType: undefined,
         optionList: undefined,
         scoreRule: undefined,
+        isOneProb: 1,
       };
     }
 
@@ -184,6 +164,7 @@ const createChildQustion = (it: any) => {
         width: it.width ?? "33.3%",
         score: it.score,
         blockLength: 1,
+        isOneProb: 1,
         block: [
           {
             width: it.width ?? "33.3%",
@@ -201,8 +182,10 @@ const createChildQustion = (it: any) => {
       prefix: it.startNum + index,
       score: it.score,
       lineCount: it.lineCount ?? 0,
+      isOneProb: 1,
       block: [
         {
+          isOneProb: 1,
           prefix: "",
           score: it.score,
           lineCount: it.lineCount ?? 0,
