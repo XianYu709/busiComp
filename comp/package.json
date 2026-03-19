@@ -1,0 +1,26 @@
+{
+  "name": "@sjjb/utils",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "index.ts",
+  "description": "工具库",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/pako": "^2.0.4",
+    "@vueuse/core": "13.1.0",
+    "crypto-js": "4.2.0",
+    "echarts": "5.6.0",
+    "fs-extra": "^11.3.1",
+    "jsencrypt": "3.3.2",
+    "mitt": "^3.0.1",
+    "pako": "^2.1.0",
+    "pdf-lib": "^1.17.1",
+    "xlsx": "^0.18.5"
+  }
+}
