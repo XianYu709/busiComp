@@ -30,11 +30,7 @@ const baseURL = import.meta.env.VITE_APP_BASE_API;
 // 默认配置
 const DEFAULT_CONFIG: Required<UploadConfig> = {
   uploadUrl: baseURL + "/system-center/resource/oss/uploadByBusinessId",
-  headers: {
-    // Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-    Authorization: `Bearer ${getToken()}`,
-    clientid: import.meta.env.VITE_APP_CLIENT_ID,
-  },
+  headers: {},
   maxFileSize: 5, // 5MB
   maxFileCount: 6,
   acceptTypes: ["jpg", "jpeg", "png", "gif", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"],
@@ -42,6 +38,14 @@ const DEFAULT_CONFIG: Required<UploadConfig> = {
     throw new Error("getBusinessId function is required");
   },
 };
+
+function getUploadHeaders(customHeaders?: Record<string, any>) {
+  return {
+    Authorization: `Bearer ${getToken()}`,
+    clientid: import.meta.env.VITE_APP_CLIENT_ID,
+    ...customHeaders,
+  }
+}
 
 /**
  * 文件上传工具类
@@ -103,7 +107,7 @@ export class FileUploader {
       // 发送上传请求
       const uploadResponse = await fetch(this.config.uploadUrl, {
         method: "POST",
-        headers: this.config.headers,
+        headers: getUploadHeaders(this.config.headers),
         body: formData,
       });
 

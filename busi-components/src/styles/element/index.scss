@@ -1,0 +1,49 @@
+@forward 'element-plus/theme-chalk/src/common/var.scss' with (
+  $colors: (
+    'primary': (
+      'base': #0E5FC7,
+    ),
+    'success': (
+      'base': #20A28B,
+    ),
+    'warning': (
+      'base': #D3AA4C,
+    ),
+    'danger': (
+      'base': #EB1919,
+    ),
+    'info': (
+      'base': #4C9FD3,
+    ),
+  ),
+  $font-family: (
+    '': '"Source Han Sans", Arial, sans-serif',
+  ),
+  $text-color: (
+    'primary': #333333,
+    'regular': #666666,
+    'secondary': #999999,
+    'placeholder': #C8C8C8,
+    'disabled': #C8C8C8,
+  ),
+  $border-color: (
+    'base': #E8E8E8,
+  ),
+  $fill-color: (
+    'base': #F5F6F7,
+  ),
+  $border-radius: (
+    'base': 4px,
+    'small': 2px,
+    'round': 999px,
+    'circle': 50%,
+  ),
+  $box-shadow: (
+    'base': 0px 4px 10px 0px rgba(0,0,0,0.05),
+    'light': 0px 4px 5px 0px rgba(0,0,0,0),
+    'lighter': 0px 4px 20px 0px rgba(0,0,0,0.15),
+  )
+);
+
+// 导入Element Plus样式
+@use "element-plus/theme-chalk/src/index.scss" as *;

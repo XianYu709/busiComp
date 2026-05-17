@@ -60,8 +60,9 @@ const DEFAULT_EXPORT_CONFIG: ExportConfig = {
     }
   },
   anomalyHandlers: {
-    '-1.00': () => '',
-    '-1': () => '',
+    // 解决学情中心-学情统计和提交汇总的导出数据中携带-1或-1.00无法展示的问题zdm
+    // '-1.00': () => '',
+    // '-1': () => '',
     'null': () => '',
     'undefined': () => ''
   }
@@ -489,8 +490,9 @@ export const EXPORT_PRESETS = {
       percentage: (value: any) => value && value !== '-1.00' ? `${Number(value).toFixed(1)}%` : ''
     },
     anomalyHandlers: {
-      '-1.00': () => '',
-      '-1': () => '',
+      // 解决学情中心-学情统计和提交汇总的导出数据中携带-1或-1.00无法展示的问题zdm
+      // '-1.00': () => '',
+      // '-1': () => '',
       'null': () => '',
       'undefined': () => ''
     }

@@ -106,6 +106,28 @@ export const parseOptions = (optionString: any): Record<string, string> => {
     return result;
   };
 
+  const tryParseOptionPayload = (raw: string) => {
+    const normalized = raw.replace(/\\\\(?=["\\])/g, "\\");
+    const candidates = [raw, normalized].filter(
+      (candidate, index, list) => candidate && list.indexOf(candidate) === index,
+    );
+
+    for (const candidate of candidates) {
+      let current: unknown = candidate;
+      for (let depth = 0; depth < 2; depth++) {
+        if (typeof current !== "string") return current;
+        try {
+          current = JSON.parse(current);
+        } catch {
+          break;
+        }
+      }
+      if (typeof current !== "string") return current;
+    }
+
+    return null;
+  };
+
   if (optionString && typeof optionString === "object" && !Array.isArray(optionString)) {
     return optionString;
   }
@@ -115,20 +137,16 @@ export const parseOptions = (optionString: any): Record<string, string> => {
   }
 
   if (typeof optionString === "string") {
-    try {
-      const obj = JSON.parse(optionString);
-      // 对象格式：{"A":"xxx"}
-      if (obj && typeof obj === "object" && !Array.isArray(obj)) {
-        return obj;
-      }
-      // 数组格式：[{"key":"A","value":"xxx"}]
-      if (Array.isArray(obj)) {
-        return parseArrayOptions(obj);
-      }
-      return {};
-    } catch {
-      return {};
+    const obj = tryParseOptionPayload(optionString);
+    // 对象格式：{"A":"xxx"}
+    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+      return obj;
     }
+    // 数组格式：[{"key":"A","value":"xxx"}]
+    if (Array.isArray(obj)) {
+      return parseArrayOptions(obj);
+    }
+    return {};
   }
 
   return {};
@@ -145,16 +163,16 @@ export const parseOptionLines = (option: any): Array<{ label: string; html: stri
 
     // 如果是字符串，先尝试解析 JSON
     let obj = option;
-    if (typeof option === 'string') {
+    if (typeof option === "string") {
       try {
         // 双重转义的情况，例如 \\" 需要转换为 \"
-        const fixedOption = option.replace(/\\\\(?=["\\])/g, '\\');
+        const fixedOption = option.replace(/\\\\(?=["\\])/g, "\\");
         obj = JSON.parse(fixedOption);
       } catch (e) {
         // 如果解析失败，处理更复杂的转义情况
         try {
           // 对整个字符串进行反转义处理后再解析
-          const unescapedOption = option.replace(/\\\\(?=["\\])/g, '\\');
+          const unescapedOption = option.replace(/\\\\(?=["\\])/g, "\\");
           obj = JSON.parse(unescapedOption);
         } catch (e3) {
           // 如果还是失败，检查是否是重复的 {} 格式
@@ -165,30 +183,65 @@ export const parseOptionLines = (option: any): Array<{ label: string; html: stri
               obj = JSON.parse(match[1]);
             } catch (e2) {
               // 如果第一个 {} 也解析失败，直接返回原字符串
-              return [{ label: '', html: String(option) }];
+              return [{ label: "", html: String(option) }];
             }
           } else {
             // 不是重复 {} 格式，直接返回原字符串
-            return [{ label: '', html: String(option) }];
+            return [{ label: "", html: String(option) }];
           }
         }
       }
     }
 
-    if (obj && typeof obj === 'object') {
+    if (obj && typeof obj === "object") {
       // 检查是否为新的数组格式：[{"key":"A","value":"选项内容"}]
       if (Array.isArray(obj)) {
         const validOptions = obj
-          .filter((item) => item && typeof item === 'object' && item.key && item.value && typeof item.value === 'string' && item.value.trim() !== '')
-          .map((item) => ({ label: String(item.key), html: String(item.value) }));
+          .filter(
+            item =>
+              item &&
+              typeof item === "object" &&
+              item.key &&
+              item.value &&
+              typeof item.value === "string" &&
+              item.value.trim() !== "",
+          )
+          .map(item => ({ label: String(item.key), html: String(item.value) }));
         return validOptions;
       }
-      
+
       // 原有的对象格式：{"A": "选项A内容", "B": "选项B内容"}
-      const order = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+      const order = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "U",
+        "V",
+        "W",
+        "X",
+        "Y",
+        "Z",
+      ];
       const validOptions = order
-        .filter((k) => typeof obj[k] === 'string' && obj[k].trim() !== '')
-        .map((k) => ({ label: k, html: obj[k] }));
+        .filter(k => typeof obj[k] === "string" && obj[k].trim() !== "")
+        .map(k => ({ label: k, html: obj[k] }));
       // 如果没有任何有效选项，返回空数组
       return validOptions;
     }

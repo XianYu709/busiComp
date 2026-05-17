@@ -1,0 +1,42 @@
+# Environment variables
+.env
+*.env
+!config.example.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+test_*.py
+*_test.py
+temp_*.py
+
+# Backup files
+*.bak
+*.backup 
+
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.history
+
+.DS_Store
+node_modules
+./*/node_modules
+dist
+./*/dist
+.husky
